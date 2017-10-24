@@ -1,1 +1,1 @@
-say ouch
+node index.js
