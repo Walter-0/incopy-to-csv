@@ -17,18 +17,22 @@ class CSVRow {
 const fields = ['Page title', 'Title', 'Deck', 'Roofline', 'Description', 'Page Number']
 const data = []
 console.log('Checking source directory.............')
-const sourceFiles = fs.readdirSync(path.join(__dirname, 'incopy'), function (err, files) {
+let sourceFiles = fs.readdirSync(path.join(__dirname, 'incopy'), function (err, files) {
   if (err) throw err
   return files
 })
-
+sourceFiles = sourceFiles.filter((e) => e !== '.DS_Store')
 sourceFiles.forEach((sourceFile) => {
   const incopy = fs.readFileSync(path.join(__dirname, 'incopy', sourceFile), 'utf8')
   const convertedJSON = JSON.parse(convert.xml2json(incopy, {compact: true}))
-  console.log(convertedJSON)
-  const convertedXML = convertedJSON.Document.Story.ParagraphStyleRange.CharacterStyleRange.Content
+//  const convertedXML = convertedJSON.Document.Story.ParagraphStyleRange.CharacterStyleRange.Content
+  const convertedXML = convertedJSON.Document.Story.ParagraphStyleRange.map((e) => {
+    return e.CharacterStyleRange.Content
+  }).reduce((a, b) => {
+    return a.concat(b)
+  },[])
   let output = convertedXML.filter((value) => {
-    return value._text !== undefined
+    return value !== undefined
   }).map((value) => {
     let begin = '--BEGIN CSV FIELDS--'
     let end = '--END CSV FIELDS--'
