@@ -25,12 +25,17 @@ sourceFiles = sourceFiles.filter((e) => e !== '.DS_Store')
 sourceFiles.forEach((sourceFile) => {
   const incopy = fs.readFileSync(path.join(__dirname, 'incopy', sourceFile), 'utf8')
   const convertedJSON = JSON.parse(convert.xml2json(incopy, {compact: true}))
-//  const convertedXML = convertedJSON.Document.Story.ParagraphStyleRange.CharacterStyleRange.Content
-  const convertedXML = convertedJSON.Document.Story.ParagraphStyleRange.map((e) => {
-    return e.CharacterStyleRange.Content
-  }).reduce((a, b) => {
-    return a.concat(b)
-  },[])
+  let convertedXML
+  if (convertedJSON.Document.Story.ParagraphStyleRange.CharacterStyleRange.length === undefined) {
+    convertedXML = convertedJSON.Document.Story.ParagraphStyleRange.CharacterStyleRange.Content
+  } else {
+    convertedXML = convertedJSON.Document.Story.ParagraphStyleRange.CharacterStyleRange.map((e) => {
+      return e.Content
+    }).reduce((a, b) => {
+      return a.concat(b)
+    }, [])
+  }
+
   let output = convertedXML.filter((value) => {
     return value !== undefined
   }).map((value) => {
