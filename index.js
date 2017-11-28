@@ -1,7 +1,8 @@
-const fs = require ('fs')
-const path = require ('path')
+const fs = require('fs')
+const path = require('path')
 const convert = require('xml-js')
 const json2csv = require('json2csv')
+const traverse = require('traverse')
 
 class CSVRow {
   constructor (pageTitle, title, deck, roofline, description, pageNumber) {
@@ -16,56 +17,50 @@ class CSVRow {
 
 const fields = ['Page title', 'Title', 'Deck', 'Roofline', 'Description', 'Page Number']
 const data = []
-console.log('Checking source directory.............')
-let sourceFiles = fs.readdirSync(path.join(__dirname, 'incopy'), function (err, files) {
+const sourceFiles = fs.readdirSync(path.join(__dirname, 'incopy'), function (err, files) {
   if (err) throw err
   return files
-})
-sourceFiles = sourceFiles.filter((e) => e !== '.DS_Store')
+}).filter((e) => e !== '.DS_Store')
+
 sourceFiles.forEach((sourceFile) => {
   const incopy = fs.readFileSync(path.join(__dirname, 'incopy', sourceFile), 'utf8')
-  const convertedJSON = JSON.parse(convert.xml2json(incopy, {compact: true}))
-  let convertedXML
-  if (convertedJSON.Document.Story.ParagraphStyleRange.CharacterStyleRange.length === undefined) {
-    convertedXML = convertedJSON.Document.Story.ParagraphStyleRange.CharacterStyleRange.Content
-  } else {
-    convertedXML = convertedJSON.Document.Story.ParagraphStyleRange.CharacterStyleRange.map((e) => {
-      return e.Content
-    }).reduce((a, b) => {
-      return a.concat(b)
-    }, [])
-  }
+  const convertedJSON = convert.xml2js(incopy, {compact: true})
 
-  let output = convertedXML.filter((value) => {
+  const asdf = traverse(convertedJSON).reduce(function (acc, x) {
+    if (this.key === '_text') {
+      acc.push(x)
+    }
+    return acc
+  }, [])
+
+  let output = asdf.filter((value) => {
     return value !== undefined
   }).map((value) => {
     let begin = '--BEGIN CSV FIELDS--'
     let end = '--END CSV FIELDS--'
-    if (Object.values(value)[0] === begin) {
+    if (value === begin) {
       return true
-    } else if (Object.values(value)[0] === end) {
+    } else if (value === end) {
       return false
     } else {
-      return value._text.slice(value._text.indexOf(':') + 2)
+      return value.slice(value.indexOf(':') + 2)
     }
   })
   output = output.slice(output.indexOf(true) + 1, output.indexOf(false))
   const row = new CSVRow(...output)
-  data.push(
-    {
-      'Title': row.title,
-      'Page title': row.pageTitle,
-      'Deck': row.deck,
-      'Roofline': row.roofline,
-      'Description': row.description,
-      'Page Number': row.pageNumber
-    }
-  )
+  data.push({
+    'Title': row.title,
+    'Page title': row.pageTitle,
+    'Deck': row.deck,
+    'Roofline': row.roofline,
+    'Description': row.description,
+    'Page Number': row.pageNumber
+  })
 })
 
 const csv = json2csv({ data: data, fields: fields })
 
-fs.writeFile('export.csv', csv, function(err) {
+fs.writeFile('export.csv', csv, function (err) {
   if (err) throw err
   console.log('Exported successfully!')
 })
